@@ -32,7 +32,22 @@ object examples {
       .filter($"tourPrice" > 500)
       .orderBy($"tourPrice".desc)
       .show(20)
+  }
+
+  def exec2(): Unit = {
+    val spark = SessionBuilder.buildSession()
+    import spark.implicits._
+
+    val demo_commune = spark.read.json("data/input/demographie_par_commune.json")
+    val pop = demo_commune.select($"Population").agg(sum($"Population")).show
 
 
+    val pop_dep = demo_commune.select($"Population", $"Departement")
+    pop_dep.groupBy($"Departement").sum().sort(desc("sum(Population)")).show(10)
+
+    val dep = spark.read.csv("data/input/departements.txt")
+      .select($"_c0".as(alias="name"), $"_c1".as(alias="code"))
+    pop_dep.join(dep, pop_dep("Departement") === dep("code"))
+    .groupBy($"name").sum().sort(desc("sum(Population)")).show(10)
   }
 }
