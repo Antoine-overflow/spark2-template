@@ -80,4 +80,38 @@ object examples {
       .sort(desc("Job_loss"))
     job_loss.show(10)
   }
+
+  def exec4(): Unit = {
+    val spark = SessionBuilder.buildSession()
+    import spark.implicits._
+
+    val toursDF = spark.read
+      .option("multiline", true)
+      .option("mode", "PERMISSIVE")
+      .json("data/input/tours.json")
+    
+    toursDF.agg(countDistinct("tourDifficulty") as "number of difficulty levels").show
+
+    val tourPrices = toursDF.columns(7)
+    toursDF.agg(min(tourPrices), max(tourPrices), avg(tourPrices)).show
+
+    val tourPricesByDifficulty = toursDF.groupBy("tourDifficulty").agg(min(tourPrices), max(tourPrices), avg(tourPrices))
+    tourPricesByDifficulty.show
+
+    val tourDuration = toursDF.columns(4)
+    val TourPricesAndDurationByDifficulty = toursDF.groupBy("tourDifficulty").agg(min(tourPrices), max(tourPrices), avg(tourPrices), min(tourDuration), max(tourDuration), avg(tourDuration))
+    TourPricesAndDurationByDifficulty.show
+
+    val tourTags = toursDF.select(toursDF("tourDifficulty"), explode($"tourTags") as "tags")
+      .groupBy("tourDifficulty", "tags")
+      .agg(count("tags") as "number")
+      .orderBy($"number".desc)
+    tourTags.show(10)
+
+    val tourTagsByDifficulty = toursDF.select(toursDF("tourDifficulty"), toursDF("tourPrice"), explode($"tourTags") as "tags")
+      .groupBy("tourDifficulty", "tourPrice", "tags")
+      .agg(count("tags") as "number", max(toursDF("tourPrice")) as "maxPrice", min(toursDF("tourPrice")) as "minPrice", mean(toursDF("tourPrice")) as "avgPrice")
+      .orderBy($"avgPrice")
+    tourTagsByDifficulty.show(10)
+  }
 }
