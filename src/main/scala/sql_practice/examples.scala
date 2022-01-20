@@ -50,4 +50,34 @@ object examples {
     pop_dep.join(dep, pop_dep("Departement") === dep("code"))
     .groupBy($"name").sum().sort(desc("sum(Population)")).show(10)
   }
+
+  def exec3(): Unit = {
+    val spark = SessionBuilder.buildSession()
+    import spark.implicits._
+
+    val s07 = spark.read      .option("header", false)
+      .option("sep", "\t")
+      .csv("data/input/sample_07")
+      .select($"_c0".as(alias="code"), $"_c1".as(alias="job"), $"_c2".as(alias="count"), $"_c3".as(alias="salary"))
+
+    val s08 = spark.read      .option("header", false)
+      .option("sep", "\t")
+      .csv("data/input/sample_08")
+      .select($"_c0".as(alias="code"), $"_c1".as(alias="job"), $"_c2".as(alias="count"), $"_c3".as(alias="salary"))
+
+    val top_salary07 = s07.where($"salary" > 100000).sort(desc("salary"))
+    top_salary07.show(10)
+
+    val salary_growth = s07.join(s08,s07("code") === s08("code"), "Inner")
+      .select(s07("job"), s07("salary"), s08("salary"), s08("salary")-s07("salary") as "growth")
+      .where(s07("salary")<s08("salary"))
+      .sort(desc("growth"))
+    salary_growth.show(10)
+
+    val job_loss = s07.join(s08,s07("code") === s08("code"), "Inner")
+      .select(s07("code"),s07("job"),s07("count")-s08("count") as "Job_loss")
+      .where(s08("salary")>100000 and(s08("salary")>100000))
+      .sort(desc("Job_loss"))
+    job_loss.show(10)
+  }
 }
